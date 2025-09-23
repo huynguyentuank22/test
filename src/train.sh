@@ -27,6 +27,6 @@ accelerate launch src/train.py \
   --sent_length 64 \
   --split_sent \
   --predict_test \
-  --test_output_file outputs/test_predictions.csv \
+  --test_output_file outputs/submit.csv \
   --test_threshold 0.2 \
   --dump_eval_texts

@@ -926,7 +926,7 @@ def main():
                 batched=True,
                 remove_columns=test_dataset.column_names,
                 desc="Tokenizing test dataset",
-                num_proc=16
+                # num_proc=16
             )
 
         if args.pad_to_max_length:
