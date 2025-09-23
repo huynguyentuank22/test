@@ -1,6 +1,6 @@
 #!/bin/bash
 accelerate launch src/train.py \
-  --model_name_or_path FacebookAI/roberta-large \
+  --model_name_or_path FacebookAI/xlm-roberta-base \
   --training_data_path data/train.json \
   --testing_data_path data/test.json \
   --max_length 4096 \

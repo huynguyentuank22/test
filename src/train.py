@@ -539,7 +539,7 @@ def main():
             batched=True,
             remove_columns=train_dataset.column_names,
             desc="Running tokenizer on train dataset",
-            num_proc=8,
+            num_proc=16,
             # batch_size=20000,
         )
 
@@ -549,6 +549,7 @@ def main():
             batched=True,
             remove_columns=dev_dataset.column_names,
             desc="Running tokenizer on test dataset",
+            num_proc=16
         )
 
 
@@ -633,7 +634,7 @@ def main():
     metric2 = evaluate.load("precision")
     metric3 = evaluate.load("recall")
     metric4 = evaluate.load("accuracy")
-    metric5 = evaluate.load("roc_auc")
+    # metric5 = evaluate.load("roc_auc")
 
     # Train!
     total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
@@ -770,10 +771,10 @@ def main():
                 predictions=predictions,
                 references=references,
             )
-            metric5.add_batch(
-                prediction_scores=scores,
-                references=references,
-            )
+            # metric5.add_batch(
+            #     prediction_scores=scores,
+            #     references=references,
+            # )
 
 
             for ind in range(len(predictions)):
@@ -802,14 +803,14 @@ def main():
 
 
 
-        eval_metric1 = metric1.compute()
-        eval_metric2 = metric2.compute()
-        eval_metric3 = metric3.compute()
-        eval_metric5 = metric5.compute()
+        eval_metric1 = metric1.compute(average="macro")
+        eval_metric2 = metric2.compute(average="macro")
+        eval_metric3 = metric3.compute(average="macro")
+        # eval_metric5 = metric5.compute(multi_class="ovr")
         logger.info(f"epoch {epoch}: {eval_metric1}")
         logger.info(f"epoch {epoch}: {eval_metric2}")
         logger.info(f"epoch {epoch}: {eval_metric3}")
-        logger.info(f"epoch {epoch}: {eval_metric5}")
+        # logger.info(f"epoch {epoch}: {eval_metric5}")
         if args.explainability:
             eval_metric4 = metric4.compute()
             logger.info(f"epoch {epoch}: {eval_metric4}")
@@ -824,7 +825,7 @@ def main():
                     "f1": eval_metric1,
                     "precision": eval_metric2,
                     "recall": eval_metric3,
-                    "ROC_AUC": eval_metric5,
+                    # "ROC_AUC": eval_metric5,
                     "train_loss": total_loss.item() / len(train_dataloader),
                     "epoch": epoch,
                     "step": completed_steps,
@@ -832,8 +833,8 @@ def main():
                 step=completed_steps,
             )
         if accelerator.is_main_process:
-            if eval_metric5["roc_auc"]>max_f1:
-                max_f1 = eval_metric5["roc_auc"]
+            # if eval_metric5["roc_auc"]>max_f1:
+                # max_f1 = eval_metric5["roc_auc"]
                 print("Writing!!!!!")
                 with open('pred_ref_new.csv', 'w') as csvfile:
                     writer = csv.writer(csvfile)
