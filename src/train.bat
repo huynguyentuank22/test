@@ -1,16 +1,18 @@
 @echo off
+REM Launch training script with Accelerate on Windows
+
 accelerate launch src/train.py ^
   --model_name_or_path FacebookAI/xlm-roberta-base ^
   --training_data_path data/train.json ^
   --testing_data_path data/test.json ^
   --max_length 4096 ^
-  --per_device_train_batch_size 1 ^
-  --per_device_eval_batch_size 1 ^
-  --learning_rate 2e-6 ^
-  --num_train_epochs 3 ^
+  --per_device_train_batch_size 8 ^
+  --per_device_eval_batch_size 8 ^
+  --learning_rate 2e-5 ^
+  --num_train_epochs 1 ^
   --output_dir outputs/ ^
   --seed 42 ^
-  --train_top_k 1000 ^
+  --train_top_k 5000 ^
   --split ^
   --chunk_size 256 ^
   --stride 256 ^
@@ -25,4 +27,9 @@ accelerate launch src/train.py ^
   --report_to tensorboard ^
   --attention_encoder ^
   --sent_length 64 ^
-  --split_sent
+  --split_sent ^
+  --predict_test ^
+  --test_output_file outputs/test_predictions.csv ^
+  --test_threshold 0.2 ^
+  --dump_eval_texts
+

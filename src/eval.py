@@ -354,7 +354,7 @@ def main():
         test = json.load(f)
     test_dataset = Dataset.from_list(test)
 
-    num_labels = 2
+    num_labels = 3
     config = AutoConfig.from_pretrained(
         args.model_name_or_path,
         num_labels=num_labels,

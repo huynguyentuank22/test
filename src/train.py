@@ -336,6 +336,31 @@ def parse_args():
         default=1000,
         help="Number of training examples to use from the beginning of the training dataset.",
     )
+
+    # parse_args() – thêm sau cụm logging/tracking
+    parser.add_argument(
+        "--predict_test",
+        action="store_true",
+        help="If passed, run inference on test set after training and export predictions only (no metrics)."
+    )
+    parser.add_argument(
+        "--test_output_file",
+        type=str,
+        default="outputs/test_predictions.csv",
+        help="Where to save test predictions (CSV)."
+    )
+    parser.add_argument(
+        "--test_threshold",
+        type=float,
+        default=0.2,
+        help="Threshold for positive class when converting scores to labels."
+    )
+    parser.add_argument(
+        "--dump_eval_texts",
+        action="store_true",
+        help="If passed, dump decoded eval texts and predictions to CSV during training."
+    )
+
     args = parser.parse_args()
 
     # Argument validation
@@ -832,16 +857,14 @@ def main():
                 },
                 step=completed_steps,
             )
-        if accelerator.is_main_process:
-            # if eval_metric5["roc_auc"]>max_f1:
-                # max_f1 = eval_metric5["roc_auc"]
-                print("Writing!!!!!")
-                with open('pred_ref_new.csv', 'w') as csvfile:
-                    writer = csv.writer(csvfile)
-                    writer.writerow(["preds", "refs", "scores", "inputs", "inputs2"])
-                    for ind in range(len(preds)):
-                        to_write = [preds[ind], refs[ind], all_scores[ind], txt[ind], txt2[ind]]
-                        writer.writerow(to_write)
+        if args.dump_eval_texts and accelerator.is_main_process:
+            print("Writing eval dump...")
+            with open('pred_ref_new.csv', 'w', encoding='utf-8', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(["preds", "refs", "scores", "inputs", "inputs2"])
+                for ind in range(len(preds)):
+                    to_write = [preds[ind], refs[ind], all_scores[ind], txt[ind], txt2[ind]]
+                    writer.writerow(to_write)
 
         if args.push_to_hub and epoch < args.num_train_epochs - 1:
             accelerator.wait_for_everyone()
@@ -893,6 +916,51 @@ def main():
                     token=args.hub_token,
                 )
 
+    # Predict-only on test set (no metrics)
+    if args.predict_test:
+        accelerator.print("Running predict-only on test set...")
+        # Preprocess test set
+        with accelerator.main_process_first():
+            test_dataset_tok = test_dataset.map(
+                preprocess_function,
+                batched=True,
+                remove_columns=test_dataset.column_names,
+                desc="Tokenizing test dataset",
+                num_proc=16
+            )
+
+        if args.pad_to_max_length:
+            test_collator = default_data_collator
+        else:
+            test_collator = DataCollatorWithPadding(
+                tokenizer, pad_to_multiple_of=(8 if accelerator.mixed_precision == "fp16" else None)
+            )
+
+        test_dataloader = DataLoader(test_dataset_tok, collate_fn=test_collator, batch_size=args.per_device_eval_batch_size)
+        test_dataloader = accelerator.prepare(test_dataloader)
+
+        model.eval()
+        predictions = []
+        with torch.no_grad():
+            for batch in test_dataloader:
+                outputs = model(**batch)
+                logits = outputs.logits
+                scores = torch.softmax(logits, dim=1)
+                if scores.shape[1] > 1:
+                    pos_scores = scores[:, 1]
+                else:
+                    pos_scores = scores[:, 0]
+                preds = (pos_scores > args.test_threshold).long()
+                predictions.extend(accelerator.gather(preds).tolist())
+
+        if accelerator.is_main_process:
+            os.makedirs(os.path.dirname(args.test_output_file) or ".", exist_ok=True)
+            with open(args.test_output_file, "w", encoding="utf-8", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["index", "prediction"])
+                for i, p in enumerate(predictions[:len(test_dataset)]):  # trim duplicates if any
+                    writer.writerow([i, p])
+            accelerator.print(f"Saved test predictions to {args.test_output_file}")
 
 
 
