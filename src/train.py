@@ -564,7 +564,7 @@ def main():
             batched=True,
             remove_columns=train_dataset.column_names,
             desc="Running tokenizer on train dataset",
-            num_proc=16,
+            # num_proc=16,
             # batch_size=20000,
         )
 
@@ -574,7 +574,7 @@ def main():
             batched=True,
             remove_columns=dev_dataset.column_names,
             desc="Running tokenizer on test dataset",
-            num_proc=16
+            # num_proc=16
         )
 
 
