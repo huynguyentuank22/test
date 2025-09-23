@@ -25,7 +25,7 @@ accelerate launch src/train.py \
   --report_to tensorboard \
   --attention_encoder \
   --sent_length 64 \
-  --split_sent
+  --split_sent \
   --predict_test \
   --test_output_file outputs/test_predictions.csv \
   --test_threshold 0.2 \
