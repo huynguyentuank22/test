@@ -554,7 +554,22 @@ def main():
                     truncation=True,
                 )
 
-            batch['labels'] = examples['labels']
+            # Add labels only if present and ensure they are integer-typed
+            if 'labels' in examples:
+                labels = examples['labels']
+                # Convert potential string labels to ints; handle lists/batches
+                if isinstance(labels, list):
+                    try:
+                        labels = [int(l) for l in labels]
+                    except (ValueError, TypeError):
+                        # If conversion fails, leave as-is and let downstream raise a clearer error
+                        pass
+                else:
+                    try:
+                        labels = int(labels)
+                    except (ValueError, TypeError):
+                        pass
+                batch['labels'] = labels
 
             return batch
 
@@ -573,7 +588,7 @@ def main():
             preprocess_function,
             batched=True,
             remove_columns=dev_dataset.column_names,
-            desc="Running tokenizer on test dataset",
+            desc="Running tokenizer on dev dataset",
             # num_proc=16
         )
 

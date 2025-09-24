@@ -14,8 +14,8 @@ accelerate launch src/train.py \
   --split \
   --chunk_size 256 \
   --stride 256 \
-  --num_chunks1 32 \
-  --num_chunks2 8 \
+  --num_chunks1 8 \
+  --num_chunks2 4 \
   --maximal_text_length 8192 \
   --weight_decay 0.1 \
   --num_warmup_steps 1000 \
