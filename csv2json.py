@@ -22,8 +22,11 @@ def csv_to_json(csv_file, json_file):
                 row["labels"] = row.pop("label")
 
             # Nếu có nhãn thì map sang số
-            if "labels" in row and row["labels"] in label_map:
-                row["labels"] = label_map[row["labels"]]
+            if "labels" in row:
+                if row["labels"] in label_map:
+                    row["labels"] = label_map[row["labels"]]
+                else:
+                    row["labels"] = -1
 
             data.append(row)
 
