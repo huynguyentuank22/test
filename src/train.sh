@@ -7,10 +7,10 @@ accelerate launch src/train.py \
   --per_device_train_batch_size 8 \
   --per_device_eval_batch_size 8 \
   --learning_rate 2e-5 \
-  --num_train_epochs 1 \
+  --num_train_epochs 3 \
   --output_dir outputs/ \
   --seed 42 \
-  --train_top_k 5000 \
+  --train_top_k 6300 \
   --split \
   --chunk_size 256 \
   --stride 256 \
