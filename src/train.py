@@ -532,50 +532,55 @@ def main():
 
     padding = "max_length" if args.pad_to_max_length else False
 
-    def preprocess_function(examples):
-        # Tokenize the texts
-        if "roberta" in args.model_name_or_path:
-            if args.split:
-                if args.split_inputs:
-                    # print("Splitting inputs contexts response!")
-                    batch = transform_list_of_text_pairs(examples["context"],examples["response"], tokenizer, args.chunk_size, args.stride,
-                                                    args.minimal_chunk_length, args.num_chunks1, args.num_chunks2, args.pad_last, args.pad_original, args.maximal_text_length,args.split_sent, args.sent_length, args.pair_chunks)
-
+    def make_preprocess(add_labels: bool):
+        def preprocess_function(examples):
+            # Tokenize the texts
+            if "roberta" in args.model_name_or_path:
+                if args.split:
+                    if args.split_inputs:
+                        batch = transform_list_of_text_pairs(
+                            examples["context"], examples["response"], tokenizer,
+                            args.chunk_size, args.stride,
+                            args.minimal_chunk_length, args.num_chunks1, args.num_chunks2,
+                            args.pad_last, args.pad_original, args.maximal_text_length,
+                            args.split_sent, args.sent_length, args.pair_chunks
+                        )
+                    else:
+                        batch = transform_list_of_text(
+                            examples["text"], tokenizer, args.chunk_size, args.stride,
+                            args.minimal_chunk_length, args.num_chunks1, args.pad_last,
+                            args.pad_original, args.maximal_text_length
+                        )
                 else:
-                    batch = transform_list_of_text(examples["text"], tokenizer, args.chunk_size, args.stride,
-                                                    args.minimal_chunk_length, args.num_chunks1, args.pad_last, args.pad_original, args.maximal_text_length)
+                    batch = tokenizer(
+                        examples["text"], padding=padding,
+                        max_length=args.max_length, truncation=True,
+                    )
 
+                # Attach labels only when requested
+                if add_labels and 'labels' in examples:
+                    labels = examples['labels']
+                    if isinstance(labels, list):
+                        try:
+                            labels = [int(l) for l in labels]
+                        except (ValueError, TypeError):
+                            pass
+                    else:
+                        try:
+                            labels = int(labels)
+                        except (ValueError, TypeError):
+                            pass
+                    batch['labels'] = labels
 
-            else:
-                batch = tokenizer(
-                    examples["text"],
-                    padding=padding,
-                    max_length=args.max_length,
-                    truncation=True,
-                )
+                return batch
+        return preprocess_function
 
-            # Add labels only if present and NOT in predict-only mode; ensure integer-typed
-            if (not args.predict_test) and 'labels' in examples:
-                labels = examples['labels']
-                # Convert potential string labels to ints; handle lists/batches
-                if isinstance(labels, list):
-                    try:
-                        labels = [int(l) for l in labels]
-                    except (ValueError, TypeError):
-                        # If conversion fails, leave as-is and let downstream raise a clearer error
-                        pass
-                else:
-                    try:
-                        labels = int(labels)
-                    except (ValueError, TypeError):
-                        pass
-                batch['labels'] = labels
-
-            return batch
+    preprocess_train = make_preprocess(add_labels=True)
+    preprocess_eval = make_preprocess(add_labels=True)
 
     with accelerator.main_process_first():
         train_dataset = train_dataset.map(
-            preprocess_function,
+            preprocess_train,
             batched=True,
             remove_columns=train_dataset.column_names,
             desc="Running tokenizer on train dataset",
@@ -585,7 +590,7 @@ def main():
 
     with accelerator.main_process_first():
         eval_dataset = dev_dataset.map(
-            preprocess_function,
+            preprocess_eval,
             batched=True,
             remove_columns=dev_dataset.column_names,
             desc="Running tokenizer on dev dataset",
@@ -935,9 +940,10 @@ def main():
     if args.predict_test:
         accelerator.print("Running predict-only on test set...")
         # Preprocess test set
+        preprocess_test = make_preprocess(add_labels=False)
         with accelerator.main_process_first():
             test_dataset_tok = test_dataset.map(
-                preprocess_function,
+                preprocess_test,
                 batched=True,
                 remove_columns=test_dataset.column_names,
                 desc="Tokenizing test dataset",
