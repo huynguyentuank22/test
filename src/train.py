@@ -554,8 +554,8 @@ def main():
                     truncation=True,
                 )
 
-            # Add labels only if present and ensure they are integer-typed
-            if 'labels' in examples:
+            # Add labels only if present and NOT in predict-only mode; ensure integer-typed
+            if (not args.predict_test) and 'labels' in examples:
                 labels = examples['labels']
                 # Convert potential string labels to ints; handle lists/batches
                 if isinstance(labels, list):
