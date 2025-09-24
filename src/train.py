@@ -976,11 +976,18 @@ def main():
 
         if accelerator.is_main_process:
             os.makedirs(os.path.dirname(args.test_output_file) or ".", exist_ok=True)
+            # Determine original columns from test_dataset
+            original_keys = list(test_dataset[0].keys()) if len(test_dataset) > 0 else []
             with open(args.test_output_file, "w", encoding="utf-8", newline="") as f:
                 writer = csv.writer(f)
-                writer.writerow(["index", "prediction"])
-                for i, p in enumerate(predictions[:len(test_dataset)]):  # trim duplicates if any
-                    writer.writerow([i, p])
+                # Write header: index, prediction, then original fields
+                writer.writerow(["index", "prediction"] + original_keys)
+                # Write rows aligned with original dataset order
+                limit = len(test_dataset)
+                for i, p in enumerate(predictions[:limit]):  # trim duplicates if any
+                    example = test_dataset[i]
+                    original_values = [example.get(k, "") for k in original_keys]
+                    writer.writerow([i, p] + original_values)
             accelerator.print(f"Saved test predictions to {args.test_output_file}")
 
 
